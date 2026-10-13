@@ -6,6 +6,7 @@
 **Java 21 / Spring Boot 4.1** with **PostgreSQL + Flyway**.
 Engineer-led, AI-accelerated, with full traceability.
 
+[![CI](https://github.com/JugalMahendra/CS-ai-assisted-url-shortener/actions/workflows/ci.yml/badge.svg)](https://github.com/JugalMahendra/CS-ai-assisted-url-shortener/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
@@ -121,6 +122,8 @@ HTTP + PostgreSQL).
 
 > **Verification status (honest):** the 63 unit tests pass without Docker; the Testcontainers suite
 > runs against real PostgreSQL via `mvn verify`. See [Engineering Summary](documents/engineering-summary.md#testing-approach--honest-status) for exactly what's been observed green.
+
+**CI:** GitHub Actions runs the full suite (`mvn verify`, incl. Testcontainers — runners have Docker) on every push → [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 <details>
 <summary>🐳 Running the tests with Colima (macOS)</summary>
