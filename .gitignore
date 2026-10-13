@@ -1,0 +1,17 @@
+# Build output
+  target/
+
+  # IDE
+  .idea/
+  *.iml
+  *.ipr
+  *.iws
+  .vscode/
+
+  # OS
+  .DS_Store
+
+  # Local env / logs
+  .env
+  *.log
+  logs/
