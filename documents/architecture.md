@@ -49,6 +49,31 @@ flowchart LR
   A --> DB
 ```
 
+### Redirect + click recording (one transaction)
+```mermaid
+sequenceDiagram
+    actor U as Client
+    participant RC as RedirectController
+    participant RS as RedirectService
+    participant DB as PostgreSQL
+    U->>RC: GET /{code}
+    RC->>RS: resolveAndRecordClick(code, referrer, ua, ip)
+    RS->>DB: findByCode(code)
+    alt not found
+        RS-->>RC: ShortLinkNotFoundException
+        RC-->>U: 404 problem+json
+    else disabled or expired
+        RS-->>RC: ShortLinkGoneException
+        RC-->>U: 410 problem+json
+    else active
+        Note over RS,DB: single transaction
+        RS->>DB: UPDATE click_count = click_count + 1
+        RS->>DB: INSERT click_event
+        RS-->>RC: originalUrl
+        RC-->>U: 302 Location
+    end
+```
+
 ## 4. Data model
 - **`short_link`**: `id` (identity PK — also the sequence source concept), `code` (UNIQUE), `original_url`,
   `status` (`ACTIVE`/`EXPIRED`/`DISABLED`, CHECK), `is_custom_alias`, `click_count` (denormalized),
@@ -58,6 +83,29 @@ flowchart LR
 - **`short_code_seq`**: sequence starting at `62^6` so generated codes are 7 chars.
 - **Flyway**: `V1` baseline, `V2` core schema, `V3` sequence. Hibernate `ddl-auto=none` — **Flyway owns
   the schema** (no entity/DDL drift).
+
+```mermaid
+erDiagram
+    SHORT_LINK ||--o{ CLICK_EVENT : has
+    SHORT_LINK {
+        bigint id PK
+        varchar code UK
+        text original_url
+        varchar status
+        boolean is_custom_alias
+        bigint click_count
+        timestamptz created_at
+        timestamptz expires_at
+    }
+    CLICK_EVENT {
+        bigint id PK
+        bigint short_link_id FK
+        timestamptz occurred_at
+        text referrer
+        text user_agent
+        varchar ip_hash
+    }
+```
 
 ## 5. Key decisions (and why)
 - **302 (configurable), not 301** — 301 is cached aggressively and would hide clicks / block edits.
