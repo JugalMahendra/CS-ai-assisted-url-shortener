@@ -1,0 +1,175 @@
+openapi: 3.1.0
+info:
+  title: AI-Assisted URL Shortener API
+  version: 0.0.1
+  description: >
+    Create short links, redirect them (HTTP 302), and read click analytics.
+    Errors use RFC 7807 problem+json. Note: the redirect endpoint lives at the root path
+    `GET /{code}`, so this documentation is served under `/docs/` to avoid the catch-all.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+paths:
+  /api/v1/links:
+    post:
+      summary: Create a short link
+      operationId: createLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLinkRequest'
+            examples:
+              generated:
+                summary: System-generated code
+                value: { url: "https://www.example.com/some/long/path?x=1" }
+              customAlias:
+                summary: Custom alias with expiry
+                value: { url: "https://example.com/promo", customAlias: "promo2026", expiresAt: "2030-01-01T00:00:00Z" }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              description: The short URL
+              schema: { type: string, format: uri }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LinkResponse' }
+              example:
+                code: "1000000"
+                shortUrl: "http://localhost:8080/1000000"
+                originalUrl: "https://www.example.com/some/long/path?x=1"
+                status: "ACTIVE"
+                createdAt: "2026-10-12T17:00:00Z"
+                expiresAt: null
+        '400':
+          description: Invalid URL, alias, or expiration
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetail' } } }
+        '409':
+          description: Custom alias already in use
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetail' } } }
+        '422':
+          description: Unsafe URL (disallowed scheme or host)
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetail' } } }
+
+  /{code}:
+    get:
+      summary: Redirect to the original URL
+      operationId: redirect
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+          example: "1000000"
+      responses:
+        '302':
+          description: Redirect to the destination
+          headers:
+            Location:
+              description: The original URL
+              schema: { type: string, format: uri }
+        '404':
+          description: Unknown code
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetail' } } }
+        '410':
+          description: Link expired or deactivated
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetail' } } }
+
+  /api/v1/links/{code}/analytics:
+    get:
+      summary: Click analytics for a short link
+      operationId: analytics
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+          example: "1000000"
+      responses:
+        '200':
+          description: Analytics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsResponse' }
+              example:
+                code: "1000000"
+                totalClicks: 3
+                firstClickAt: "2026-10-12T17:01:00Z"
+                lastClickAt: "2026-10-12T17:05:00Z"
+                timeSeries:
+                  - { date: "2026-10-12", clicks: 3 }
+        '404':
+          description: Unknown code
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetail' } } }
+
+  /actuator/health:
+    get:
+      summary: Service health
+      operationId: health
+      responses:
+        '200':
+          description: Aggregate health (details hidden)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "UP" }
+
+components:
+  schemas:
+    CreateLinkRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Absolute http/https URL to shorten (max 2048 chars)
+          example: "https://www.example.com/"
+        customAlias:
+          type: [string, "null"]
+          description: Optional user-chosen code (3-16 chars, [A-Za-z0-9_-], not reserved)
+          example: "promo2026"
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+          description: Optional expiry instant (must be in the future)
+          example: "2030-01-01T00:00:00Z"
+    LinkResponse:
+      type: object
+      properties:
+        code: { type: string, example: "1000000" }
+        shortUrl: { type: string, format: uri, example: "http://localhost:8080/1000000" }
+        originalUrl: { type: string, format: uri, example: "https://www.example.com/" }
+        status: { type: string, enum: [ACTIVE, EXPIRED, DISABLED], example: "ACTIVE" }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: [string, "null"], format: date-time }
+    AnalyticsResponse:
+      type: object
+      properties:
+        code: { type: string }
+        totalClicks: { type: integer, format: int64, example: 3 }
+        firstClickAt: { type: [string, "null"], format: date-time }
+        lastClickAt: { type: [string, "null"], format: date-time }
+        timeSeries:
+          type: array
+          items: { $ref: '#/components/schemas/DailyClickCount' }
+    DailyClickCount:
+      type: object
+      properties:
+        date: { type: string, format: date, example: "2026-10-12" }
+        clicks: { type: integer, format: int64, example: 3 }
+    ProblemDetail:
+      type: object
+      description: RFC 7807 problem detail
+      properties:
+        type: { type: string, format: uri, example: "about:blank" }
+        title: { type: string, example: "Unsafe URL" }
+        status: { type: integer, example: 422 }
+        detail: { type: string, example: "Unsupported URL scheme 'file' (only http/https are allowed)" }
+        instance: { type: string }

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+    <!--
+      Portable, office-free Maven settings for this project.
+
+      Purpose: resolve dependencies ONLY from public Maven Central, bypassing any user-level
+      ~/.m2/settings.xml mirror. Contains NO credentials and NO corporate/internal URLs.
+
+      Usage:   mvn -s tools/maven-settings.xml <goals>
+      Reviewers with a clean ~/.m2 can omit -s and simply run mvn.
+
+      To regenerate: this file is a minimal settings.xml with an empty <mirrors/> (so nothing
+      intercepts Central) plus an explicit public Central repository and pluginRepository.
+    -->
+    <mirrors/>
+    <profiles>
+        <profile>
+            <id>public-central</id>
+            <repositories>
+                <repository>
+                    <id>central</id>
+                    <url>https://repo.maven.apache.org/maven2</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>central</id>
+                    <url>https://repo.maven.apache.org/maven2</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </pluginRepository>
+            </pluginRepositories>
+        </profile>
+    </profiles>
+    <activeProfiles>
+        <activeProfile>public-central</activeProfile>
+    </activeProfiles>
+</settings>
